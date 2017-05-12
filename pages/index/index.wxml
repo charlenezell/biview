@@ -1,10 +1,26 @@
 <!--index.wxml-->
 <view class="container">
-  <view  bindtap="bindViewTap" class="userinfo">
-    <image class="userinfo-avatar" src="{{userInfo.avatarUrl}}" background-size="cover"></image>
-    <text class="userinfo-nickname">{{userInfo.nickName}}</text>
-  </view>
-  <view class="usermotto">
-    <text class="user-motto">{{motto}}</text>
+  <view class="rankBoard">
+    <view class="rankBoard__t rankBoard__item">总榜</view>
+    <view class="rankBoard__item">
+      <input placeholder="输入精灵名字" auto-focus bindinput="bindKeyInput" />
+    </view>
+    <view class="rankBoard__item scrollView">
+      <block wx:if="{{filteredTotleRankList.length>0}}">
+        <view class="rankBoard__c">
+          <view class="rankItem" id="jl_{{item.elfName}}" wx:for="{{filteredTotleRankList}}" wx:key="{{item.elfName}}">
+            <view class="rankItem__n">{{item.rank}}</view>
+            <view class="rankItem__inf">
+              <view class="rankItem__inf__t">{{item.elfName}}</view>
+              <view>职业:{{item.skill}}</view>
+              <view>战斗力:{{item.sword}}</view>
+            </view>
+          </view>
+        </view>
+      </block>
+      <block wx:else>
+        <view style="text-align:center;padding:100rpx 0;">没有找到关键字"{{keyword}}"相关的精灵</view>
+      </block>
+    </view>
   </view>
 </view>
