@@ -1,0 +1,347 @@
+<style lang="less">
+@import '../style/weui.wxss';
+.addCountDownForm {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  padding: 5px;
+  box-sizing: border-box;
+}
+.presetList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+.presetItem {
+  padding: 5px;
+  margin: 5px;
+  text-align: center;
+  border-radius: 5px;
+  background-color: yellow;
+  color: blue;
+  &--on {
+    background-color: blue;
+    color: yellow;
+  }
+  &__h {
+    font-size: 14px;
+  }
+  &__t {
+    font-size: 12px;
+  }
+}
+.clockList {
+  display: flex;
+  flex-wrap: wrap;
+}
+.clockItem {
+  text-align: center;
+  position: relative;
+  padding: 20px 5px;
+  background: greenyellow;
+  margin: 5px;
+  &__rm {
+    position: absolute;
+    top: 0;
+    right: 0;
+    outline: 1px solid red;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    line-height: 20px;
+    text-align: center;
+  }
+  &__c {
+    display: flex;
+    justify-content: space-between;
+    button {
+      margin: 0 3px;
+    }
+  }
+  &__t {
+    font-size: 12px;
+    color: rgba(255, 0, 0, 0.555);
+  }
+  &__t2 {
+    font-size: 16px;
+    color: red;
+  }
+  &__h {
+    font-size: 14px;
+  }
+}
+</style>
+<template>
+  <view class="container">
+    <button type="default" @tap="showAddCountDown">新建计时器</button>
+    <view wx:if="{{countDownList.length>0}}" class="clockList">
+      <view wx:for="{{countDownList}}" class="clockItem" wx:key="{{item.id}}" >
+          <view class="clockItem__rm" @tap="clockRemoveHaneler({{item.id}})">X</view>
+          <view class="clockItem__h">{{item.name}}</view>
+          <view class="clockItem__t">{{item.time}}</view>
+          <view class="clockItem__t2">{{item.leaveTimeString}}</view>
+          <view class="clockItem__c">
+            <button @tap="clockHandler({{item.id}},{{item.status}})" type="{{item.status==0?'primary':'warn'}}" size="mini">{{item.status==0?'开始':'暂停'}}</button>
+            <button @tap="clockResetHandler({{item.id}})" type="default" size="mini">重设</button>
+          </view>
+      </view>
+    </view>
+    <view wx:if="{{addCountDownFormShow}}" class="addCountDownForm">
+      <view class="weui-cells">
+          <!-- <view class="weui-cell">
+              <view class="weui-cell__hd">
+                  <view class="weui-label">使用预设时钟</view>
+              </view>
+              <view class="weui-cell__bd">
+                  <switch @change="customCountHandler"/>
+              </view>
+          </view> -->
+          <view class="weui-cell">
+              <view class="weui-cell__hd">
+                  <view class="weui-label">计时器名字</view>
+              </view>
+              <view class="weui-cell__bd">
+                  <input class="weui-input" placeholder="请输倒计时名字" @keyup="inputChange" value="{{countDownName}}" />
+              </view>
+          </view>
+          <view class="weui-cell">
+              <view class="weui-cell__hd">
+                  <view class="weui-label">倒计时</view>
+              </view>
+              <view class="weui-cell__bd">
+                  <picker mode="time" value="{{countDownValue}}" start="00:00" end="60:00" @change="bindTimeChange">
+                    <input class="weui-input" readonly value="{{countDownValue}}" />
+                  </picker>
+              </view>
+          </view>
+          <view class="weui-cell">
+            <view class="presetList">
+              <view wx:for="{{presets}}" class="presetItem {{selectedCustom===index?'presetItem--on':''}}" @tap="presetItemClick({{item.time}},{{index}},{{item.name}})" wx:key="{{item.id}}" >
+                <view class="presetItem__h">{{item.name}}</view>
+                <view class="presetItem__t">{{item.time}}</view>
+              </view>
+            </view>
+          </view>
+        </view>
+        <view class="weui-btn-area">
+          <button @tap="sureAddCountDown" type="primary" loading="{{false}}" plain="{{false}}"
+          disabled="{{false}}" >确定</button>
+        </view>
+        <view class="weui-btn-area">
+          <button type="default" plain="{{false}}"
+          @tap="cancelAddCountDown"
+          disabled="{{false}}" hover-class="other-button-hover">取消</button>
+        </view>
+    </view>
+  </view>
+</template>
+<script>
+import wepy from 'wepy';
+import { connect, getStore } from 'wepy-redux';
+import {
+  ADD_COUNTDOWN,
+  UPDATE_COUNTDOWN,
+  REMOVE_COUNTDOWN,
+  RESET_COUNTDOWN,
+  START_COUNTDOWN,
+  STOP_COUNTDOWN
+} from '../store/types/countDown';
+function timeToString(time) {
+  let minute = Math.floor(time / (60 * 1000));
+  let second = Math.floor((time - minute * 60 * 1000) / 1000);
+  return `${minute}:${second}`;
+}
+function stringToTime(time) {
+  let [minute, second] = time.split(':');
+  return (parseInt(minute) * 60 + parseInt(second)) * 1000;
+}
+
+let store = getStore();
+
+function reset() {
+  this.addCountDownFormShow = false;
+  this.countDownValue = '01:00';
+  this.selectedCustom = null;
+}
+
+@connect(
+  {
+    countDownList(state) {
+      return state.countDown.countDownList;
+    }
+    // addCountDownFormShow(state){
+    //   return state.countDown.addCountDownFormShow;
+    // }
+  },
+  {
+    addCountDown: ADD_COUNTDOWN,
+    updateCountDown: UPDATE_COUNTDOWN,
+    startCountDown: START_COUNTDOWN,
+    stopCountDown: STOP_COUNTDOWN,
+    removeCountDown: REMOVE_COUNTDOWN,
+    resetCountDown: RESET_COUNTDOWN
+  }
+)
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '如意计时'
+  };
+  components = {
+    // panel: Panel,
+    // counter1: Counter,
+    // counter2: Counter,
+    // list: List,
+    // group: Group,
+    // toast: Toast
+  };
+
+  mixins = [
+    /* testMixin */
+  ];
+
+  data = {
+    countDownName: '',
+    addCountDownFormShow: false,
+    countDownValue: '01:00',
+    selectedCustom: null,
+    presets: [
+      {
+        name: '平板支撑',
+        time: '02:00'
+      },
+      {
+        name: '蒸饭',
+        time: '20:00'
+      },
+      {
+        name: '面膜',
+        time: '15:00'
+      },
+      {
+        name: '午睡',
+        time: '30:00'
+      },
+      {
+        name: '泡面',
+        time: '03:00'
+      },
+      {
+        name: '溏心蛋',
+        time: '06:00'
+      },
+      {
+        name: '煮蛋(全熟)',
+        time: '10:00'
+      }
+    ].map((v, k) => ({ ...v, id: k }))
+  };
+
+  computed = {
+    now() {
+      return +new Date();
+    }
+  };
+
+  methods = {
+    presetItemClick(time, index, name) {
+      this.countDownValue = time;
+      this.selectedCustom = index;
+      this.countDownName = name;
+    },
+    inputChange(e) {
+      this.countDownName = e.detail.value;
+      this.selectedCustom = null;
+    },
+    bindTimeChange(e) {
+      this.countDownValue = e.detail.value;
+      this.selectedCustom = null;
+    },
+    showAddCountDown() {
+      this.addCountDownFormShow = true;
+    },
+    cancelAddCountDown() {
+      reset.call(this);
+    },
+    sureAddCountDown() {
+      this.methods.addCountDown({
+        time: this.countDownValue,
+        name: this.countDownName
+      });
+      reset.call(this);
+    },
+    clockRemoveHaneler(id) {
+      this.methods.removeCountDown(id);
+    },
+    clockResetHandler(id) {
+      this.methods.resetCountDown(id);
+    },
+    clockHandler(id, status) {
+      if (status == 0) {
+        this.methods.startCountDown(id);
+      } else {
+        this.methods.stopCountDown(id);
+      }
+    },
+    updateList(list, { updateCountDown }) {
+      let now = new Date();
+      list.forEach(v => {
+        if (v.status == 1 && !v.stop) {
+          console.log(v.leaveTime);
+          let ltime = stringToTime(v.time) - (v.leaveTime ? v.leaveTime : 0);
+          if (ltime > 0) {
+            let lt = ltime - (now - v.startTime);
+            console.log(lt,ltime,now-v.startTime);
+            if (lt <= 0) {
+              const innerAudioContext = wx.createInnerAudioContext();
+              innerAudioContext.autoplay = true;
+              innerAudioContext.src =
+                'https://www.soundsnap.com/streamers/play.php?id=1519385770.552:1e70c595488b27fc0b1d7f688a93285df14d022c:b1ffa66540798578b6429cd77a11a62933efe7b4b58c7264a660af0c0488f1063423c5e1b69d38603d1217b956f2b65b015db7b3a38276cbc0a9c0274edef6d164889c0a6f67b17ed8076c7b39132cd53df709ecf51e6f3b37acdbced0ded05081fa217d70bd680284f502fd2b0266b187c18f1879ee02275a57593256f611d7a62a3ecc756585cea09bb919729e0abb5153c2cef368722666d2b3ff6d55bc7bdad90756a6c9fc808326623006becccc41fdef7f0b5e3e24975c0611bd5302357a2dc2d52e688de639f2fa1a288e7ba8';
+              innerAudioContext.onPlay(() => {
+                console.log('开始播放');
+              });
+              innerAudioContext.onError(res => {
+                console.log(res.errMsg);
+                console.log(res.errCode);
+              });
+              console.log(
+                v.leaveTime,
+                `${v.name}倒计时${v.time}已经到时间了！！`
+              );
+              updateCountDown({
+                id: v.id,
+                data: {
+                  leaveTime: 0,
+                  stop: true,
+                  status: 0
+                }
+              });
+            } else {
+              // console.log(lt,timeToString(lt));
+              updateCountDown({
+                id: v.id,
+                data: {
+                  leaveTime: lt,
+                  leaveTimeString: timeToString(lt)
+                }
+              });
+            }
+          }
+        }
+      });
+    }
+  };
+
+  events = {};
+  onLoad() {
+    this.___timer = setInterval(() => {
+      this.methods.updateList(this.countDownList, this.methods);
+    }, 30);
+  }
+  onUnload() {
+    clearInterval(this.___timer);
+  }
+}
+</script>
