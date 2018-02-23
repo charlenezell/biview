@@ -43,6 +43,9 @@
   padding: 20px 5px;
   background: greenyellow;
   margin: 5px;
+  &--over{
+    background:yellow;
+  }
   &__rm {
     position: absolute;
     top: 0;
@@ -78,7 +81,7 @@
   <view class="container">
     <button type="default" @tap="showAddCountDown">新建计时器</button>
     <view wx:if="{{countDownList.length>0}}" class="clockList">
-      <view wx:for="{{countDownList}}" class="clockItem" wx:key="{{item.id}}" >
+      <view wx:for="{{countDownList}}" class="clockItem {{item.timeover?'clockItem--over':''}}" wx:key="{{item.id}}" >
           <view class="clockItem__rm" @tap="clockRemoveHaneler({{item.id}})">X</view>
           <view class="clockItem__h">{{item.name}}</view>
           <view class="clockItem__t">{{item.time}}</view>
@@ -104,7 +107,7 @@
                   <view class="weui-label">计时器名字</view>
               </view>
               <view class="weui-cell__bd">
-                  <input class="weui-input" placeholder="请输倒计时名字" @keyup="inputChange" value="{{countDownName}}" />
+                  <input class="weui-input" placeholder="请输倒计时名字" @change="inputChange" value="{{countDownName}}" />
               </view>
           </view>
           <view class="weui-cell">
@@ -113,7 +116,7 @@
               </view>
               <view class="weui-cell__bd">
                   <picker mode="time" value="{{countDownValue}}" start="00:00" end="60:00" @change="bindTimeChange">
-                    <input class="weui-input" readonly value="{{countDownValue}}" />
+                    <button type="default">{{countDownValue}}</button>
                   </picker>
               </view>
           </view>
@@ -217,12 +220,24 @@ export default class Index extends wepy.page {
         time: '20:00'
       },
       {
-        name: '面膜',
-        time: '15:00'
+        name: '鱼',
+        time: '08:00'
       },
       {
-        name: '午睡',
-        time: '30:00'
+        name: '桂鱼',
+        time: '09:00'
+      },
+      {
+        name: '大鱼',
+        time: '10:00'
+      },
+      {
+        name: '肉类',
+        time: '10:00'
+      },
+      {
+        name: '蒸包',
+        time: '10:00'
       },
       {
         name: '泡面',
@@ -289,11 +304,9 @@ export default class Index extends wepy.page {
       let now = new Date();
       list.forEach(v => {
         if (v.status == 1 && !v.stop) {
-          console.log(v.leaveTime);
-          let ltime = stringToTime(v.time) - (v.leaveTime ? v.leaveTime : 0);
+          let ltime = v.leaveTime?v.leaveTime:stringToTime(v.time);
           if (ltime > 0) {
-            let lt = ltime - (now - v.startTime);
-            console.log(lt,ltime,now-v.startTime);
+            let lt = v.ctime - (now - v.startTime);
             if (lt <= 0) {
               const innerAudioContext = wx.createInnerAudioContext();
               innerAudioContext.autoplay = true;
@@ -315,6 +328,7 @@ export default class Index extends wepy.page {
                 data: {
                   leaveTime: 0,
                   stop: true,
+                  timeover:true,
                   status: 0
                 }
               });
